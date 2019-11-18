@@ -17,7 +17,6 @@ import {
   getAllResponses,
   APIError,
   EditorialWorkflowError,
-  filterPromisesWith,
   localForage,
   onlySuccessfulPromises,
   resolvePromiseProperties,
@@ -148,9 +147,7 @@ export default class API {
 
   generateContentKey(collectionName, slug) {
     if (!this.useOpenAuthoring) {
-      // this doesn't use the collection, but we need to leave it that way for backwards
-      // compatibility
-      return slug;
+      return `${collectionName}/${slug}`;
     }
 
     return `${this.repo}/${collectionName}/${slug}`;
@@ -394,28 +391,14 @@ export default class API {
       });
   }
 
-  getPRsForBranchName = ({
-    branchName,
-    state,
-    base = this.branch,
-    repoURL = this.repoURL,
-    usernameOfFork,
-  } = {}) => {
-    // Get PRs with a `head` of `branchName`. Note that this is a
-    // substring match, so we need to check that the `head.ref` of
-    // at least one of the returned objects matches `branchName`.
-    return this.requestAllPages(`${repoURL}/pulls`, {
+  getPRsForBranchName = ({ branchName }) => {
+    return this.requestAllPages(`${this.repoURL}/pulls`, {
       params: {
-        head: usernameOfFork ? `${usernameOfFork}:${branchName}` : branchName,
-        ...(state ? { state } : {}),
-        base,
+        head: branchName,
+        state: 'open',
+        base: this.branch,
       },
     });
-  };
-
-  branchHasPR = async ({ branchName, ...rest }) => {
-    const prs = await this.getPRsForBranchName({ branchName, ...rest });
-    return prs.some(pr => pr.head.ref === branchName);
   };
 
   getUpdatedOpenAuthoringMetadata = async (contentKey, { metadata: metadataArg } = {}) => {
@@ -459,34 +442,92 @@ export default class API {
     return metadata;
   };
 
+  async getCmsBranches() {
+    const branches = await this.request(`${this.repoURL}/git/refs/heads/cms`).catch(
+      replace404WithEmptyArray,
+    );
+    return branches;
+  }
+
+  async migrateToVersion1(branch, metaData) {
+    const oldContentKey = branch.ref.substring(`refs/heads/cms/`.length);
+    const newContentKey = `${metaData.collection}/${oldContentKey}`;
+    const branchName = `cms/${newContentKey}`;
+
+    // create new branch and pull request in new format
+    const newBranch = await this.createBranch(branchName, metaData.pr.head);
+    const pr = await this.createPR(metaData.commitMessage, branchName);
+
+    // remove old data
+    await this.closePR(metaData.pr);
+    await this.deleteBranch(metaData.branch);
+
+    // store new metadata
+    await this.storeMetadata(newContentKey, {
+      ...metaData,
+      type: 'PR',
+      pr: {
+        number: pr.number,
+        head: pr.head.sha,
+      },
+      branch: branchName,
+      timeStamp: new Date().toISOString(),
+      version: '1',
+    });
+
+    return newBranch;
+  }
+
+  async migrateBranch(branch) {
+    const metadata = await this.retrieveMetadata(this.contentKeyFromRef(branch.ref));
+    if (!metadata.version) {
+      // migrate branch from cms/slug to cms/collection/slug
+      branch = await this.migrateToVersion1(branch, metadata);
+    }
+
+    return branch;
+  }
+
   async listUnpublishedBranches() {
     console.log(
       '%c Checking for Unpublished entries',
       'line-height: 30px;text-align: center;font-weight: bold',
     );
-    const onlyBranchesWithOpenPRs = filterPromisesWith(({ ref }) =>
-      this.branchHasPR({ branchName: this.branchNameFromRef(ref), state: 'open' }),
-    );
-    const getUpdatedOpenAuthoringBranches = flow([
-      map(async branch => {
-        const contentKey = this.contentKeyFromRef(branch.ref);
-        const metadata = await this.getUpdatedOpenAuthoringMetadata(contentKey);
-        // filter out removed entries
-        if (!metadata) {
-          return Promise.reject('Unpublished entry was removed');
-        }
-        return branch;
-      }),
-      onlySuccessfulPromises,
-    ]);
+
     try {
-      const branches = await this.request(`${this.repoURL}/git/refs/heads/cms`).catch(
-        replace404WithEmptyArray,
-      );
-      const filterFunction = this.useOpenAuthoring
-        ? getUpdatedOpenAuthoringBranches
-        : onlyBranchesWithOpenPRs;
-      return await filterFunction(branches);
+      if (this.useOpenAuthoring) {
+        const branches = await this.getCmsBranches();
+        const getUpdatedOpenAuthoringBranches = flow([
+          map(async branch => {
+            const contentKey = this.contentKeyFromRef(branch.ref);
+            const metadata = await this.getUpdatedOpenAuthoringMetadata(contentKey);
+            // filter out removed entries
+            if (!metadata) {
+              return Promise.reject('Unpublished entry was removed');
+            }
+            return branch;
+          }),
+          onlySuccessfulPromises,
+        ]);
+
+        const updatedOpenAuthoringBranches = await getUpdatedOpenAuthoringBranches(branches);
+        return updatedOpenAuthoringBranches;
+      } else {
+        const [branches, pullRequests] = await Promise.all([
+          this.getCmsBranches(),
+          this.getPRsForBranchName({ branchName: CMS_BRANCH_PREFIX }),
+        ]);
+
+        const onlyBranchesWithOpenPRs = branches.filter(({ ref }) =>
+          pullRequests.some(pr => pr.head.ref === this.branchNameFromRef(ref)),
+        );
+
+        const migratedBranches = await Promise.all(
+          onlyBranchesWithOpenPRs.map(branch => this.migrateBranch(branch)),
+        );
+
+        return migratedBranches;
+      }
     } catch (err) {
       console.log(
         '%c No Unpublished entries',
