@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0-beta.10](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-core/compare/netlify-cms-core@2.13.0-beta.9...netlify-cms-core@2.13.0-beta.10) (2019-11-20)
+
+
+### Bug Fixes
+
+* updated entry card ([9d7e2d1](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-core/commit/9d7e2d10f9efd8e1e05be693da110486f7105d55))
+
+
+
+
+
 # [2.13.0-beta.9](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-core/compare/netlify-cms-core@2.13.0-beta.8...netlify-cms-core@2.13.0-beta.9) (2019-11-20)
 
 **Note:** Version bump only for package netlify-cms-core
