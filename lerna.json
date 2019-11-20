@@ -10,8 +10,14 @@
       "allowBranch": "master",
       "conventionalCommits": true,
       "preid": "beta",
-      "gitRemote": "upstream",
       "message": "chore(release): publish"
+    },
+    "publish": {
+      "message": "chore(packages): release",
+      "conventionalCommits": true,
+      "npmClient": "npm",
+      "registry": "http://localhost:4873/",
+      "verifyAccess": false
     }
   },
   "ignoreChanges": [
