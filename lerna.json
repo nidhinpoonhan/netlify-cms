@@ -6,11 +6,14 @@
   "useWorkspaces": true,
   "loglevel": "success",
   "command": {
-    "version": {
-      "allowBranch": "master",
-      "conventionalCommits": true,
-      "preid": "beta",
-      "message": "chore(release): publish"
+    // "version": {
+    //   "allowBranch": "master",
+    //   "conventionalCommits": true,
+    //   "preid": "beta",
+    //   "message": "chore(release): publish"
+    // },
+    "init": {
+      "exact": true
     },
     "publish": {
       "message": "chore(packages): release",
