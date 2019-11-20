@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0-beta.5](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-lib-util/compare/netlify-cms-lib-util@2.4.0-beta.4...netlify-cms-lib-util@2.4.0-beta.5) (2019-11-20)
+
+
+### Bug Fixes
+
+* **backend-github:** editorial workflow commits ([#2867](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-lib-util/issues/2867)) ([86adca3](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-lib-util/commit/86adca3a18f25ab74d1c6702bafab250f005ceec))
+
+
+
+
+
 # [2.4.0-beta.4](https://github.com/netlify/netlify-cms/tree/master/packages/netlify-cms-lib-util/compare/netlify-cms-lib-util@2.4.0-beta.3...netlify-cms-lib-util@2.4.0-beta.4) (2019-09-26)
 
 
